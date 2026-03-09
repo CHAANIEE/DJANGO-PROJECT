@@ -1,0 +1,68 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register | WalletWise</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="{% static 'css/style.css' %}" rel="stylesheet">
+</head>
+<body class="auth-page">
+<div class="auth-wrap">
+  <div class="auth-card" style="max-width:520px">
+    <div class="auth-brand">
+      <div class="auth-icon">💰</div>
+      <h1 class="auth-title">Create Account</h1>
+      <p class="auth-sub">Start managing your personal finances today</p>
+    </div>
+    <form method="post">
+      {% csrf_token %}
+      <div class="row-2">
+        <div class="field-group">
+          <label class="field-label">First Name</label>
+          {{ form.first_name }}
+          {% if form.first_name.errors %}<div class="field-error">{{ form.first_name.errors.0 }}</div>{% endif %}
+        </div>
+        <div class="field-group">
+          <label class="field-label">Last Name</label>
+          {{ form.last_name }}
+          {% if form.last_name.errors %}<div class="field-error">{{ form.last_name.errors.0 }}</div>{% endif %}
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Email</label>
+        {{ form.email }}
+        {% if form.email.errors %}<div class="field-error">{{ form.email.errors.0 }}</div>{% endif %}
+      </div>
+      <div class="field-group">
+        <label class="field-label">Username</label>
+        {{ form.username }}
+        {% if form.username.errors %}<div class="field-error">{{ form.username.errors.0 }}</div>{% endif %}
+      </div>
+      <div class="field-group">
+        <label class="field-label">Monthly Salary (₱)</label>
+        {{ form.monthly_salary }}
+        {% if form.monthly_salary.errors %}<div class="field-error">{{ form.monthly_salary.errors.0 }}</div>{% endif %}
+      </div>
+      <div class="row-2">
+        <div class="field-group">
+          <label class="field-label">Password</label>
+          {{ form.password1 }}
+          {% if form.password1.errors %}<div class="field-error">{{ form.password1.errors.0 }}</div>{% endif %}
+        </div>
+        <div class="field-group">
+          <label class="field-label">Confirm Password</label>
+          {{ form.password2 }}
+          {% if form.password2.errors %}<div class="field-error">{{ form.password2.errors.0 }}</div>{% endif %}
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary w-full mt-4">
+        <i class="bi bi-person-plus-fill me-1"></i> Create Account
+      </button>
+    </form>
+    <p class="auth-switch">Already have an account? <a href="{% url 'login' %}">Sign in</a></p>
+  </div>
+</div>
+</body>
+</html>
