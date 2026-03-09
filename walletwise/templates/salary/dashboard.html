@@ -1,0 +1,183 @@
+{% extends 'salary/base.html' %}
+{% block title %}Dashboard | WalletWise{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="pg">
+
+  <!-- Greeting -->
+  <div class="pg-header">
+    <div>
+      <h2 class="pg-title">{{ greeting }}, {{ request.user.first_name|default:request.user.username }} 👋</h2>
+      <p class="pg-sub">{{ current_month }} overview</p>
+    </div>
+    <a href="{% url 'analytics' %}" class="btn btn-outline">View Analytics →</a>
+  </div>
+
+  <!-- Balance Hero -->
+  <div class="balance-hero">
+    <div class="bh-glow"></div>
+    <div class="bh-label">NET BALANCE THIS MONTH</div>
+    <div class="bh-value {% if net_balance < 0 %}neg{% endif %}">₱{{ net_balance|floatformat:2 }}</div>
+    <div class="bh-stats">
+      <div class="bh-stat">
+        <span class="bh-stat-icon income-dot"></span>
+        <div>
+          <div class="bh-stat-label">Income</div>
+          <div class="bh-stat-val income">₱{{ total_income|floatformat:2 }}</div>
+        </div>
+      </div>
+      <div class="bh-divider"></div>
+      <div class="bh-stat">
+        <span class="bh-stat-icon expense-dot"></span>
+        <div>
+          <div class="bh-stat-label">Expenses</div>
+          <div class="bh-stat-val expense">₱{{ total_expense|floatformat:2 }}</div>
+        </div>
+      </div>
+      <div class="bh-divider"></div>
+      <div class="bh-stat">
+        <span class="bh-stat-icon savings-dot"></span>
+        <div>
+          <div class="bh-stat-label">Total Savings</div>
+          <div class="bh-stat-val savings">₱{{ total_saved|floatformat:2 }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="quick-actions">
+    <a href="{% url 'add_transaction' %}?type=income"  class="qa income"><i class="bi bi-plus-circle-fill"></i> Add Income</a>
+    <a href="{% url 'add_transaction' %}?type=expense" class="qa expense"><i class="bi bi-dash-circle-fill"></i> Add Expense</a>
+    <a href="{% url 'add_savings_goal' %}"             class="qa savings"><i class="bi bi-piggy-bank-fill"></i> New Goal</a>
+    <a href="{% url 'budget' %}"                       class="qa budget"><i class="bi bi-pie-chart-fill"></i> Set Budget</a>
+  </div>
+
+  <!-- Charts Row -->
+  <div class="two-col">
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Expense Breakdown</div>
+        <div class="card-sub">{{ current_month }}</div>
+      </div>
+      <div class="card-body donut-wrap">
+        {% if exp_cats_json != "[]" %}
+        <canvas id="donutChart" width="140" height="140"></canvas>
+        <div id="donutLegend" class="donut-legend"></div>
+        {% else %}
+        <div class="empty-state">No expenses this month</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Savings Goals</div>
+        <a href="{% url 'savings' %}" class="card-link">View all →</a>
+      </div>
+      <div class="card-body">
+        {% for g in goal_data %}
+        <div class="goal-row">
+          <div class="goal-row-top">
+            <span class="goal-name">{{ g.name }}</span>
+            <span class="goal-pct">{{ g.percent }}%</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" style="width:{{ g.percent }}%;background:{{ g.color }}"></div></div>
+          <div class="goal-row-bot">
+            <span>₱{{ g.current|floatformat:2 }}</span>
+            <span class="muted">Goal: ₱{{ g.target|floatformat:2 }}</span>
+          </div>
+          {% if g.is_complete %}<div class="goal-complete">🎉 Goal Reached!</div>{% endif %}
+        </div>
+        {% empty %}
+        <div class="empty-state">No savings goals yet. <a href="{% url 'add_savings_goal' %}">Create one</a></div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Budget Overview -->
+  {% if budget_data %}
+  <div class="card mt-3">
+    <div class="card-head">
+      <div class="card-title">Budget Overview</div>
+      <a href="{% url 'budget' %}" class="card-link">Manage →</a>
+    </div>
+    <div class="card-body budget-grid">
+      {% for b in budget_data %}
+      <div class="budget-item">
+        <div class="budget-item-top">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="cat-dot" style="background:{{ b.color }}"></span>
+            <span class="budget-cat">{{ b.category }}</span>
+            {% if b.over %}<span class="badge-over">OVER</span>{% endif %}
+          </div>
+          <span class="budget-pct {% if b.over %}over{% elif b.pct > 80 %}warn{% endif %}">{{ b.pct }}%</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:{{ b.pct }}%;background:{% if b.over %}#ef4444{% elif b.pct > 80 %}#f59e0b{% else %}{{ b.color }}{% endif %}"></div>
+        </div>
+        <div class="budget-item-bot">
+          <span>₱{{ b.spent|floatformat:2 }}</span>
+          <span class="muted">Limit ₱{{ b.obj.limit|floatformat:2 }}</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Recent Transactions -->
+  <div class="card mt-3">
+    <div class="card-head">
+      <div class="card-title">Recent Transactions</div>
+      <a href="{% url 'transactions' %}" class="card-link">View all →</a>
+    </div>
+    <div class="table-wrap">
+      <table class="tbl">
+        <thead><tr><th>Type</th><th>Category</th><th>Description</th><th>Date</th><th>Amount</th><th></th></tr></thead>
+        <tbody>
+          {% for t in recent %}
+          <tr>
+            <td><span class="type-badge {{ t.type }}">{{ t.get_type_display }}</span></td>
+            <td>{{ t.category }}</td>
+            <td class="muted">{{ t.description|default:"—" }}</td>
+            <td class="muted small">{{ t.date }}</td>
+            <td class="amount {{ t.type }}">{% if t.type == 'income' %}+{% else %}-{% endif %}₱{{ t.amount|floatformat:2 }}</td>
+            <td>
+              <a href="{% url 'edit_transaction' t.pk %}" class="icon-btn"><i class="bi bi-pencil"></i></a>
+              <a href="{% url 'delete_transaction' t.pk %}" class="icon-btn danger"><i class="bi bi-trash"></i></a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="empty-td">No transactions yet. <a href="{% url 'add_transaction' %}">Add one</a>.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const expCats = {{ exp_cats_json|safe }};
+if (expCats.length) {
+  const ctx = document.getElementById('donutChart');
+  const chart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: expCats.map(c => c.name),
+      datasets: [{ data: expCats.map(c => c.value), backgroundColor: expCats.map(c => c.color), borderWidth: 0, hoverOffset: 6 }]
+    },
+    options: { cutout: '70%', plugins: { legend: { display: false } } }
+  });
+  const leg = document.getElementById('donutLegend');
+  expCats.forEach(c => {
+    leg.innerHTML += `<div class="dl-item"><span class="dl-dot" style="background:${c.color}"></span><span>${c.name}</span><span class="dl-val">₱${Number(c.value).toLocaleString('en-PH',{minimumFractionDigits:2})}</span></div>`;
+  });
+}
+</script>
+{% endblock %}
