@@ -1,0 +1,45 @@
+{% extends 'salary/base.html' %}
+{% block title %}{{ title }} | WalletWise{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="pg">
+  <div class="form-page">
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">{{ title }}</div>
+        <a href="{% url 'savings' %}" class="btn btn-ghost">← Back</a>
+      </div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          <div class="form-grid">
+            <div class="field-group full-width">
+              <label class="field-label">Goal Name *</label>
+              {{ form.name }}
+              {% if form.name.errors %}<div class="field-error">{{ form.name.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="field-group">
+              <label class="field-label">Category</label>
+              {{ form.category }}
+            </div>
+            <div class="field-group">
+              <label class="field-label">Target Amount (₱) *</label>
+              {{ form.target }}
+              {% if form.target.errors %}<div class="field-error">{{ form.target.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="field-group">
+              <label class="field-label">Starting Amount (₱)</label>
+              {{ form.current }}
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Save Goal</button>
+            <a href="{% url 'savings' %}" class="btn btn-ghost">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
