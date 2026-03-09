@@ -1,0 +1,20 @@
+{% extends 'salary/base.html' %}
+{% block title %}Confirm Delete | WalletWise{% endblock %}
+{% block page_title %}Confirm Delete{% endblock %}
+
+{% block content %}
+<div class="pg">
+  <div class="form-page narrow">
+    <div class="card text-center">
+      <div class="delete-icon">⚠️</div>
+      <h3 class="fw-bold mb-2" style="color:#f1f5f9">Delete {{ label }}</h3>
+      <p class="muted mb-4">Are you sure you want to delete <strong style="color:#e2e8f0">{{ object }}</strong>? This cannot be undone.</p>
+      <form method="post" style="display:flex;gap:12px;justify-content:center">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Yes, Delete</button>
+        <a href="javascript:history.back()" class="btn btn-ghost">Cancel</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
