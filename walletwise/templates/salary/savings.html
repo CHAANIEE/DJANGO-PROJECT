@@ -1,0 +1,82 @@
+{% extends 'salary/base.html' %}
+{% block title %}Savings | WalletWise{% endblock %}
+{% block page_title %}Savings Goals{% endblock %}
+
+{% block content %}
+<div class="pg">
+  <div class="pg-header">
+    <div>
+      <h2 class="pg-title">Savings Goals</h2>
+      <p class="pg-sub">Total saved: <strong class="savings">₱{{ total_saved|floatformat:2 }}</strong> of <strong>₱{{ total_goal|floatformat:2 }}</strong></p>
+    </div>
+    <a href="{% url 'add_savings_goal' %}" class="btn btn-primary">+ New Goal</a>
+  </div>
+
+  <div class="goals-grid">
+    {% for g in goal_data %}
+    <div class="goal-card" style="--gcolor:{{ g.color }}">
+      <div class="gc-header">
+        <div>
+          <div class="gc-name">{{ g.obj.name }}</div>
+          <span class="gc-cat">{{ g.obj.category }}</span>
+        </div>
+        <div style="display:flex;gap:6px">
+          <a href="{% url 'edit_savings_goal' g.obj.pk %}" class="icon-btn"><i class="bi bi-pencil"></i></a>
+          <a href="{% url 'delete_savings_goal' g.obj.pk %}" class="icon-btn danger"><i class="bi bi-trash"></i></a>
+        </div>
+      </div>
+
+      <div class="gc-amounts">
+        <div>
+          <div class="gc-amount-label">SAVED</div>
+          <div class="gc-amount-val saved">₱{{ g.obj.current|floatformat:2 }}</div>
+        </div>
+        <div class="gc-pct-circle">{{ g.percent }}%</div>
+        <div style="text-align:right">
+          <div class="gc-amount-label">GOAL</div>
+          <div class="gc-amount-val goal">₱{{ g.obj.target|floatformat:2 }}</div>
+        </div>
+      </div>
+
+      <div class="progress-bar big">
+        <div class="progress-fill" style="width:{{ g.percent }}%;background:{{ g.color }}"></div>
+      </div>
+
+      <div class="gc-remaining">
+        {% if g.is_complete %}
+          <span class="complete-badge">🎉 Goal Reached!</span>
+        {% else %}
+          <span class="muted small">₱{{ g.remaining|floatformat:2 }} remaining</span>
+        {% endif %}
+      </div>
+
+      {% if not g.is_complete %}
+      <form method="post" action="{% url 'deposit_savings' g.obj.pk %}" class="deposit-form">
+        {% csrf_token %}
+        <input type="number" name="amount" class="form-control" placeholder="Deposit amount…" step="0.01" min="0.01" required>
+        <input type="hidden" name="date" value="{% now 'Y-m-d' %}">
+        <button type="submit" class="btn btn-sm btn-primary">Deposit</button>
+      </form>
+      {% endif %}
+
+      {% if g.deposits %}
+      <div class="deposit-history">
+        <div class="dh-title">Recent Deposits</div>
+        {% for d in g.deposits %}
+        <div class="dh-row">
+          <span class="dh-amount">+₱{{ d.amount|floatformat:2 }}</span>
+          <span class="muted small">{{ d.date }}{% if d.note %} — {{ d.note }}{% endif %}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% empty %}
+    <div class="empty-full">
+      No savings goals yet.<br>
+      <a href="{% url 'add_savings_goal' %}" class="btn btn-primary mt-3">Create Your First Goal</a>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
