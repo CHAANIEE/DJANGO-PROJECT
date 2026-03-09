@@ -1,0 +1,73 @@
+{% extends 'salary/base.html' %}
+{% block title %}Transactions | WalletWise{% endblock %}
+{% block page_title %}Transactions{% endblock %}
+
+{% block content %}
+<div class="pg">
+  <!-- Summary -->
+  <div class="stat-row">
+    <div class="stat-card income-card">
+      <div class="sc-icon"><i class="bi bi-arrow-up-circle-fill"></i></div>
+      <div class="sc-val">₱{{ total_income|floatformat:2 }}</div>
+      <div class="sc-lbl">Income This Month</div>
+    </div>
+    <div class="stat-card expense-card">
+      <div class="sc-icon"><i class="bi bi-arrow-down-circle-fill"></i></div>
+      <div class="sc-val">₱{{ total_expense|floatformat:2 }}</div>
+      <div class="sc-lbl">Expenses This Month</div>
+    </div>
+    <div class="stat-card {% if net >= 0 %}savings-card{% else %}danger-card{% endif %}">
+      <div class="sc-icon"><i class="bi bi-wallet2"></i></div>
+      <div class="sc-val">₱{{ net|floatformat:2 }}</div>
+      <div class="sc-lbl">Net Balance</div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filter-bar">
+    <form method="get" class="filter-form">
+      <div class="search-box"><i class="bi bi-search"></i>
+        <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Search…">
+      </div>
+      <select name="type" class="form-select w-auto" onchange="this.form.submit()">
+        <option value="all"     {% if txn_type == 'all' %}selected{% endif %}>All Types</option>
+        <option value="income"  {% if txn_type == 'income' %}selected{% endif %}>Income</option>
+        <option value="expense" {% if txn_type == 'expense' %}selected{% endif %}>Expense</option>
+      </select>
+      <input type="month" name="month" value="{{ month }}" class="form-control w-auto">
+      <button type="submit" class="btn btn-outline">Filter</button>
+      <a href="{% url 'transactions' %}" class="btn btn-ghost">Clear</a>
+    </form>
+    <div style="display:flex;gap:8px">
+      <a href="{% url 'add_transaction' %}?type=income"  class="btn btn-success">+ Income</a>
+      <a href="{% url 'add_transaction' %}?type=expense" class="btn btn-danger">+ Expense</a>
+    </div>
+  </div>
+
+  <div class="card p-0">
+    <div class="table-wrap">
+      <table class="tbl">
+        <thead><tr><th>#</th><th>Type</th><th>Category</th><th>Description</th><th>Date</th><th>Amount</th><th class="tc">Actions</th></tr></thead>
+        <tbody>
+          {% for t in transactions %}
+          <tr>
+            <td class="muted small">{{ forloop.counter }}</td>
+            <td><span class="type-badge {{ t.type }}">{{ t.get_type_display }}</span></td>
+            <td>{{ t.category }}</td>
+            <td class="muted">{{ t.description|default:"—" }}</td>
+            <td class="muted small">{{ t.date }}</td>
+            <td class="amount {{ t.type }} fw">{% if t.type == 'income' %}+{% else %}-{% endif %}₱{{ t.amount|floatformat:2 }}</td>
+            <td class="tc">
+              <a href="{% url 'edit_transaction' t.pk %}" class="icon-btn"><i class="bi bi-pencil"></i></a>
+              <a href="{% url 'delete_transaction' t.pk %}" class="icon-btn danger"><i class="bi bi-trash"></i></a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="7" class="empty-td">No transactions found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
