@@ -1,0 +1,95 @@
+{% extends 'salary/base.html' %}
+{% block title %}{% if editing %}Edit{% else %}Add{% endif %} Transaction | WalletWise{% endblock %}
+{% block page_title %}{% if editing %}Edit Transaction{% else %}Add Transaction{% endif %}{% endblock %}
+
+{% block content %}
+<div class="pg">
+  <div class="form-page">
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">{% if editing %}Edit Transaction{% else %}New Transaction{% endif %}</div>
+        <a href="{% url 'transactions' %}" class="btn btn-ghost">← Back</a>
+      </div>
+      <div class="card-body">
+        <form method="post" id="txnForm">
+          {% csrf_token %}
+          <!-- Type selector -->
+          <div class="type-selector mb-4">
+            <label class="field-label">Transaction Type</label>
+            <div class="type-tabs">
+              <button type="button" class="type-tab {% if txn_type == 'income' %}active income-tab{% endif %}" data-type="income">
+                <i class="bi bi-arrow-up-circle-fill"></i> Income
+              </button>
+              <button type="button" class="type-tab {% if txn_type == 'expense' %}active expense-tab{% endif %}" data-type="expense">
+                <i class="bi bi-arrow-down-circle-fill"></i> Expense
+              </button>
+            </div>
+            <input type="hidden" name="type" id="typeInput" value="{{ txn_type }}">
+          </div>
+
+          <div class="form-grid">
+            <div class="field-group">
+              <label class="field-label">Category *</label>
+              <select name="category" id="categorySelect" class="form-select" required>
+                <option value="">— Select Category —</option>
+                <optgroup label="Income" id="incomeCats" {% if txn_type == 'expense' %}style="display:none"{% endif %}>
+                  {% for c in income_cats %}
+                  <option value="{{ c }}" {% if form.category.value == c %}selected{% endif %}>{{ c }}</option>
+                  {% endfor %}
+                </optgroup>
+                <optgroup label="Expense" id="expenseCats" {% if txn_type == 'income' %}style="display:none"{% endif %}>
+                  {% for c in expense_cats %}
+                  <option value="{{ c }}" {% if form.category.value == c %}selected{% endif %}>{{ c }}</option>
+                  {% endfor %}
+                </optgroup>
+              </select>
+            </div>
+            <div class="field-group">
+              <label class="field-label">Amount (₱) *</label>
+              {{ form.amount }}
+              {% if form.amount.errors %}<div class="field-error">{{ form.amount.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="field-group">
+              <label class="field-label">Date *</label>
+              {{ form.date }}
+            </div>
+            <div class="field-group full-width">
+              <label class="field-label">Description (optional)</label>
+              {{ form.description }}
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check-lg"></i> Save Transaction
+            </button>
+            <a href="{% url 'transactions' %}" class="btn btn-ghost">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const tabs = document.querySelectorAll('.type-tab');
+const typeInput = document.getElementById('typeInput');
+const incomeCats  = document.getElementById('incomeCats');
+const expenseCats = document.getElementById('expenseCats');
+
+function setType(type) {
+  typeInput.value = type;
+  tabs.forEach(t => {
+    t.classList.toggle('active', t.dataset.type === type);
+    t.classList.toggle('income-tab',  t.dataset.type === 'income'  && type === 'income');
+    t.classList.toggle('expense-tab', t.dataset.type === 'expense' && type === 'expense');
+  });
+  incomeCats.style.display  = type === 'income'  ? '' : 'none';
+  expenseCats.style.display = type === 'expense' ? '' : 'none';
+  document.getElementById('categorySelect').value = '';
+}
+
+tabs.forEach(t => t.addEventListener('click', () => setType(t.dataset.type)));
+</script>
+{% endblock %}
