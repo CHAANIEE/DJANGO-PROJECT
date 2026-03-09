@@ -1,0 +1,92 @@
+{% extends 'salary/base.html' %}
+{% block title %}Analytics | WalletWise{% endblock %}
+{% block page_title %}Analytics{% endblock %}
+
+{% block content %}
+<div class="pg">
+
+  <div class="stat-row mb-3">
+    <div class="stat-card income-card"><div class="sc-icon"><i class="bi bi-graph-up-arrow"></i></div><div class="sc-val">₱{{ avg_income|floatformat:2 }}</div><div class="sc-lbl">Avg Monthly Income</div></div>
+    <div class="stat-card expense-card"><div class="sc-icon"><i class="bi bi-graph-down-arrow"></i></div><div class="sc-val">₱{{ avg_expense|floatformat:2 }}</div><div class="sc-lbl">Avg Monthly Expense</div></div>
+    <div class="stat-card savings-card"><div class="sc-icon"><i class="bi bi-piggy-bank-fill"></i></div><div class="sc-val">₱{{ total_saved|floatformat:2 }}</div><div class="sc-lbl">Total Savings</div></div>
+    <div class="stat-card"><div class="sc-icon"><i class="bi bi-receipt"></i></div><div class="sc-val">{{ total_txns }}</div><div class="sc-lbl">Total Transactions</div></div>
+  </div>
+
+  <!-- 6 Month Trend -->
+  <div class="card mb-3">
+    <div class="card-head">
+      <div class="card-title">6-Month Income vs Expense Trend</div>
+    </div>
+    <div class="card-body">
+      <canvas id="trendChart" height="100"></canvas>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <!-- Income Breakdown -->
+    <div class="card">
+      <div class="card-head"><div class="card-title">Income by Category</div><div class="card-sub">All time</div></div>
+      <div class="card-body">
+        <canvas id="incomeChart" height="200"></canvas>
+        <div id="incomeLegend" class="donut-legend mt-3"></div>
+      </div>
+    </div>
+
+    <!-- Expense Breakdown -->
+    <div class="card">
+      <div class="card-head"><div class="card-title">Expense by Category</div><div class="card-sub">All time</div></div>
+      <div class="card-body">
+        <canvas id="expenseChart" height="200"></canvas>
+        <div id="expenseLegend" class="donut-legend mt-3"></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const trend       = {{ trend_json|safe }};
+const incomeCats  = {{ income_cats_json|safe }};
+const expenseCats = {{ expense_cats_json|safe }};
+
+// Trend Bar Chart
+new Chart(document.getElementById('trendChart'), {
+  type: 'bar',
+  data: {
+    labels: trend.map(t => t.month),
+    datasets: [
+      { label: 'Income',  data: trend.map(t => t.income),  backgroundColor: '#22c55e88', borderColor: '#22c55e', borderWidth: 2, borderRadius: 6 },
+      { label: 'Expense', data: trend.map(t => t.expense), backgroundColor: '#ef444488', borderColor: '#ef4444', borderWidth: 2, borderRadius: 6 },
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { labels: { color: '#94a3b8' } } },
+    scales: {
+      x: { grid: { color: '#0f2040' }, ticks: { color: '#64748b' } },
+      y: { grid: { color: '#0f2040' }, ticks: { color: '#64748b', callback: v => '₱' + v.toLocaleString() } }
+    }
+  }
+});
+
+function makeDonut(id, legendId, data) {
+  if (!data.length) return;
+  new Chart(document.getElementById(id), {
+    type: 'doughnut',
+    data: {
+      labels: data.map(d => d.name),
+      datasets: [{ data: data.map(d => d.value), backgroundColor: data.map(d => d.color), borderWidth: 0, hoverOffset: 6 }]
+    },
+    options: { cutout: '65%', plugins: { legend: { display: false } } }
+  });
+  const leg = document.getElementById(legendId);
+  data.forEach(d => {
+    leg.innerHTML += `<div class="dl-item"><span class="dl-dot" style="background:${d.color}"></span><span>${d.name}</span><span class="dl-val">₱${Number(d.value).toLocaleString('en-PH',{minimumFractionDigits:2})}</span></div>`;
+  });
+}
+
+makeDonut('incomeChart',  'incomeLegend',  incomeCats);
+makeDonut('expenseChart', 'expenseLegend', expenseCats);
+</script>
+{% endblock %}
