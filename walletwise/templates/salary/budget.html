@@ -1,0 +1,83 @@
+{% extends 'salary/base.html' %}
+{% block title %}Budget | WalletWise{% endblock %}
+{% block page_title %}Monthly Budget{% endblock %}
+
+{% block content %}
+<div class="pg">
+  <div class="pg-header">
+    <div>
+      <h2 class="pg-title">Budget Limits</h2>
+      <p class="pg-sub">{{ current_month }} spending tracker</p>
+    </div>
+  </div>
+
+  <!-- Add Budget Inline -->
+  {% if available_cats %}
+  <div class="card mb-3">
+    <div class="card-head"><div class="card-title">Set New Budget</div></div>
+    <div class="card-body">
+      <form method="post" action="{% url 'add_budget' %}" class="inline-form">
+        {% csrf_token %}
+        <div class="field-group">
+          <label class="field-label">Category</label>
+          <select name="category" class="form-select" required>
+            <option value="">— Select —</option>
+            {% for c in available_cats %}
+            <option value="{{ c }}">{{ c }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Monthly Limit (₱)</label>
+          <input type="number" name="limit" class="form-control" step="0.01" min="1" placeholder="0.00" required>
+        </div>
+        <div class="field-group" style="padding-top:24px">
+          <button type="submit" class="btn btn-primary">Set Budget</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Budget Cards -->
+  <div class="budget-list">
+    {% for b in budget_data %}
+    <div class="budget-card {% if b.over %}over-budget{% endif %}">
+      <div class="bc-head">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="cat-dot-lg" style="background:{{ b.color }}"></div>
+          <div>
+            <div class="bc-cat">{{ b.obj.category }}</div>
+            {% if b.over %}<span class="badge-over">OVER BUDGET</span>
+            {% elif b.pct > 80 %}<span class="badge-warn">NEAR LIMIT</span>{% endif %}
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <a href="{% url 'edit_budget' b.obj.pk %}" class="icon-btn"><i class="bi bi-pencil"></i></a>
+          <a href="{% url 'delete_budget' b.obj.pk %}" class="icon-btn danger"><i class="bi bi-trash"></i></a>
+        </div>
+      </div>
+      <div class="bc-amounts">
+        <span class="bc-spent {% if b.over %}over{% endif %}">₱{{ b.spent|floatformat:2 }} spent</span>
+        <span class="bc-limit">Limit: ₱{{ b.obj.limit|floatformat:2 }}</span>
+      </div>
+      <div class="progress-bar big">
+        <div class="progress-fill" style="width:{{ b.pct }}%;background:{% if b.over %}#ef4444{% elif b.pct > 80 %}#f59e0b{% else %}{{ b.color }}{% endif %}"></div>
+      </div>
+      <div class="bc-remaining">
+        {% if b.over %}
+          <span class="over">Over by ₱{{ b.spent|add:"-"|add:b.obj.limit|floatformat:2 }}</span>
+        {% else %}
+          <span class="savings">₱{{ b.remaining|floatformat:2 }} remaining ({{ b.pct }}% used)</span>
+        {% endif %}
+      </div>
+    </div>
+    {% empty %}
+    <div class="empty-full">
+      No budgets set yet.<br>
+      <span class="muted">Use the form above to set your first spending limit.</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
