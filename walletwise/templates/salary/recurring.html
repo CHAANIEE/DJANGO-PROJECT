@@ -1,0 +1,65 @@
+{% extends 'salary/base.html' %}
+{% block title %}Recurring Expenses | WalletWise{% endblock %}
+{% block page_title %}Recurring Expenses{% endblock %}
+{% block content %}
+<div class="pg">
+  <div class="pg-header">
+    <div>
+      <h2 class="pg-title">Recurring Expenses</h2>
+      <p class="pg-sub">Auto-deducted every month · Total: <strong class="expense">₱{{ total_monthly|floatformat:2 }}/month</strong></p>
+    </div>
+  </div>
+
+  <!-- Add form -->
+  <div class="card mb-3">
+    <div class="card-head"><div class="card-title">Add Recurring Expense</div></div>
+    <div class="card-body">
+      <form method="post" action="{% url 'add_recurring' %}" class="inline-form">
+        {% csrf_token %}
+        <div class="field-group"><label class="field-label">Name</label>{{ form.name }}</div>
+        <div class="field-group"><label class="field-label">Category</label>{{ form.category }}</div>
+        <div class="field-group"><label class="field-label">Amount (₱)</label>{{ form.amount }}</div>
+        <div class="field-group"><label class="field-label">Frequency</label>{{ form.frequency }}</div>
+        <div class="field-group" style="padding-top:24px"><button type="submit" class="btn btn-primary">Add</button></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- List -->
+  <div class="card p-0">
+    <div class="table-wrap">
+      <table class="tbl">
+        <thead><tr><th>Name</th><th>Category</th><th>Amount</th><th>Frequency</th><th>Monthly Cost</th><th>Status</th><th class="tc">Actions</th></tr></thead>
+        <tbody>
+          {% for e in expenses %}
+          <tr class="{% if not e.is_active %}row-muted{% endif %}">
+            <td class="fw">{{ e.name }}</td>
+            <td>{{ e.category }}</td>
+            <td>₱{{ e.amount|floatformat:2 }}</td>
+            <td>{{ e.get_frequency_display }}</td>
+            <td class="expense fw">₱{{ e.monthly_cost|floatformat:2 }}</td>
+            <td>
+              {% if e.is_active %}<span class="badge-active">Active</span>
+              {% else %}<span class="badge-paused">Paused</span>{% endif %}
+            </td>
+            <td class="tc">
+              <a href="{% url 'toggle_recurring' e.pk %}" class="icon-btn {% if e.is_active %}warn{% else %}ok{% endif %}" title="{% if e.is_active %}Pause{% else %}Activate{% endif %}">
+                <i class="bi {% if e.is_active %}bi-pause-fill{% else %}bi-play-fill{% endif %}"></i>
+              </a>
+              <a href="{% url 'edit_recurring' e.pk %}" class="icon-btn"><i class="bi bi-pencil"></i></a>
+              <a href="{% url 'delete_recurring' e.pk %}" class="icon-btn danger"><i class="bi bi-trash"></i></a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="7" class="empty-td">No recurring expenses yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="info-box mt-3">
+    <i class="bi bi-info-circle-fill"></i>
+    Recurring expenses are <strong>automatically deducted</strong> as expense transactions on the 1st of each month (or 1st &amp; 16th for semi-monthly). You don't need to enter them manually.
+  </div>
+</div>
+{% endblock %}
