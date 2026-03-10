@@ -13,7 +13,6 @@
 <body>
 <div class="app-wrapper">
 
-  <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-top">
       <div class="brand">
@@ -26,26 +25,32 @@
     </div>
 
     <div class="sidebar-balance">
-      <div class="sb-label">THIS MONTH</div>
+      <div class="sb-label">THIS MONTH NET</div>
       <div class="sb-value {% if net_balance < 0 %}negative{% endif %}">
         ₱{% if net_balance %}{{ net_balance|floatformat:2 }}{% else %}0.00{% endif %}
       </div>
     </div>
 
     <nav class="sidebar-nav">
-      <a href="{% url 'dashboard' %}"    class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+      <a href="{% url 'dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
         <i class="bi bi-grid-1x2-fill"></i><span>Dashboard</span>
       </a>
       <a href="{% url 'transactions' %}" class="nav-item {% if 'transaction' in request.resolver_match.url_name %}active{% endif %}">
         <i class="bi bi-arrow-left-right"></i><span>Transactions</span>
       </a>
-      <a href="{% url 'savings' %}"      class="nav-item {% if 'savings' in request.resolver_match.url_name %}active{% endif %}">
-        <i class="bi bi-piggy-bank-fill"></i><span>Savings</span>
+      <a href="{% url 'savings' %}" class="nav-item {% if request.resolver_match.url_name == 'savings' or 'savings_goal' in request.resolver_match.url_name %}active{% endif %}">
+        <i class="bi bi-piggy-bank-fill"></i><span>Savings Goals</span>
       </a>
-      <a href="{% url 'budget' %}"       class="nav-item {% if 'budget' in request.resolver_match.url_name %}active{% endif %}">
+      <a href="{% url 'auto_savings_plans' %}" class="nav-item {% if 'auto_savings' in request.resolver_match.url_name %}active{% endif %}">
+        <i class="bi bi-robot"></i><span>Auto Savings</span>
+      </a>
+      <a href="{% url 'recurring_expenses' %}" class="nav-item {% if 'recurring' in request.resolver_match.url_name %}active{% endif %}">
+        <i class="bi bi-arrow-repeat"></i><span>Recurring</span>
+      </a>
+      <a href="{% url 'budget' %}" class="nav-item {% if 'budget' in request.resolver_match.url_name %}active{% endif %}">
         <i class="bi bi-pie-chart-fill"></i><span>Budget</span>
       </a>
-      <a href="{% url 'analytics' %}"    class="nav-item {% if request.resolver_match.url_name == 'analytics' %}active{% endif %}">
+      <a href="{% url 'analytics' %}" class="nav-item {% if request.resolver_match.url_name == 'analytics' %}active{% endif %}">
         <i class="bi bi-bar-chart-line-fill"></i><span>Analytics</span>
       </a>
     </nav>
@@ -59,16 +64,15 @@
         </div>
         <i class="bi bi-gear"></i>
       </a>
-      <form method="post" action="{% url 'logout' %}" style="display:inline;">
+      <form method="post" action="{% url 'logout' %}" style="margin:0">
         {% csrf_token %}
-        <button type="submit" class="logout-btn" style="background:none;border:none;color:inherit;cursor:pointer;padding:0;font:inherit;display:flex;align-items:center;gap:8px;">
-            <i class="bi bi-box-arrow-left"></i> Sign Out
+        <button type="submit" class="logout-btn">
+          <i class="bi bi-box-arrow-left"></i> Sign Out
         </button>
-    </form>
+      </form>
     </div>
   </aside>
 
-  <!-- Main -->
   <div class="main-area">
     <header class="topbar">
       <button class="menu-toggle" id="menuToggle"><i class="bi bi-list"></i></button>
@@ -84,6 +88,7 @@
       {% for m in messages %}
       <div class="alert alert-{{ m.tags }} auto-dismiss">
         {% if m.tags == 'success' %}<i class="bi bi-check-circle-fill"></i>
+        {% elif m.tags == 'info' %}<i class="bi bi-robot"></i>
         {% elif m.tags == 'error' or m.tags == 'danger' %}<i class="bi bi-exclamation-triangle-fill"></i>
         {% else %}<i class="bi bi-info-circle-fill"></i>{% endif %}
         {{ m }}
@@ -92,12 +97,9 @@
       {% endfor %}
     </div>
 
-    <main class="page-body">
-      {% block content %}{% endblock %}
-    </main>
+    <main class="page-body">{% block content %}{% endblock %}</main>
   </div>
 </div>
-
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="{% static 'js/main.js' %}"></script>
 {% block extra_js %}{% endblock %}
