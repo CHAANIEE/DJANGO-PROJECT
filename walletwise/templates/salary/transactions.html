@@ -1,10 +1,8 @@
 {% extends 'salary/base.html' %}
 {% block title %}Transactions | WalletWise{% endblock %}
 {% block page_title %}Transactions{% endblock %}
-
 {% block content %}
 <div class="pg">
-  <!-- Summary -->
   <div class="stat-row">
     <div class="stat-card income-card">
       <div class="sc-icon"><i class="bi bi-arrow-up-circle-fill"></i></div>
@@ -23,7 +21,6 @@
     </div>
   </div>
 
-  <!-- Filters -->
   <div class="filter-bar">
     <form method="get" class="filter-form">
       <div class="search-box"><i class="bi bi-search"></i>
@@ -50,10 +47,10 @@
         <thead><tr><th>#</th><th>Type</th><th>Category</th><th>Description</th><th>Date</th><th>Amount</th><th class="tc">Actions</th></tr></thead>
         <tbody>
           {% for t in transactions %}
-          <tr>
+          <tr {% if t.auto_tag %}class="auto-row"{% endif %}>
             <td class="muted small">{{ forloop.counter }}</td>
             <td><span class="type-badge {{ t.type }}">{{ t.get_type_display }}</span></td>
-            <td>{{ t.category }}</td>
+            <td>{{ t.category }}{% if t.auto_tag %} <span class="auto-badge">AUTO</span>{% endif %}</td>
             <td class="muted">{{ t.description|default:"—" }}</td>
             <td class="muted small">{{ t.date }}</td>
             <td class="amount {{ t.type }} fw">{% if t.type == 'income' %}+{% else %}-{% endif %}₱{{ t.amount|floatformat:2 }}</td>
