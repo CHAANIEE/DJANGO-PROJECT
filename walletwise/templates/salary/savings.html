@@ -1,7 +1,6 @@
 {% extends 'salary/base.html' %}
 {% block title %}Savings | WalletWise{% endblock %}
 {% block page_title %}Savings Goals{% endblock %}
-
 {% block content %}
 <div class="pg">
   <div class="pg-header">
@@ -9,7 +8,10 @@
       <h2 class="pg-title">Savings Goals</h2>
       <p class="pg-sub">Total saved: <strong class="savings">₱{{ total_saved|floatformat:2 }}</strong> of <strong>₱{{ total_goal|floatformat:2 }}</strong></p>
     </div>
-    <a href="{% url 'add_savings_goal' %}" class="btn btn-primary">+ New Goal</a>
+    <div style="display:flex;gap:10px">
+      <a href="{% url 'auto_savings_plans' %}" class="btn btn-outline"><i class="bi bi-robot"></i> Auto Savings</a>
+      <a href="{% url 'add_savings_goal' %}" class="btn btn-primary">+ New Goal</a>
+    </div>
   </div>
 
   <div class="goals-grid">
@@ -25,7 +27,6 @@
           <a href="{% url 'delete_savings_goal' g.obj.pk %}" class="icon-btn danger"><i class="bi bi-trash"></i></a>
         </div>
       </div>
-
       <div class="gc-amounts">
         <div>
           <div class="gc-amount-label">SAVED</div>
@@ -37,11 +38,9 @@
           <div class="gc-amount-val goal">₱{{ g.obj.target|floatformat:2 }}</div>
         </div>
       </div>
-
       <div class="progress-bar big">
         <div class="progress-fill" style="width:{{ g.percent }}%;background:{{ g.color }}"></div>
       </div>
-
       <div class="gc-remaining">
         {% if g.is_complete %}
           <span class="complete-badge">🎉 Goal Reached!</span>
@@ -49,23 +48,31 @@
           <span class="muted small">₱{{ g.remaining|floatformat:2 }} remaining</span>
         {% endif %}
       </div>
-
+      {% if g.auto_plans %}
+      <div class="auto-plan-badge">
+        <i class="bi bi-robot"></i>
+        {% for p in g.auto_plans %}Auto ₱{{ p.amount|floatformat:2 }}/{{ p.get_frequency_display }}{% endfor %}
+      </div>
+      {% endif %}
       {% if not g.is_complete %}
       <form method="post" action="{% url 'deposit_savings' g.obj.pk %}" class="deposit-form">
         {% csrf_token %}
-        <input type="number" name="amount" class="form-control" placeholder="Deposit amount…" step="0.01" min="0.01" required>
+        <input type="number" name="amount" class="form-control" placeholder="Manual deposit…" step="0.01" min="0.01" required>
         <input type="hidden" name="date" value="{% now 'Y-m-d' %}">
         <button type="submit" class="btn btn-sm btn-primary">Deposit</button>
       </form>
       {% endif %}
-
       {% if g.deposits %}
       <div class="deposit-history">
         <div class="dh-title">Recent Deposits</div>
         {% for d in g.deposits %}
         <div class="dh-row">
           <span class="dh-amount">+₱{{ d.amount|floatformat:2 }}</span>
-          <span class="muted small">{{ d.date }}{% if d.note %} — {{ d.note }}{% endif %}</span>
+          <span class="muted small">
+            {{ d.date }}
+            {% if d.is_auto %}<span class="auto-badge">AUTO</span>{% endif %}
+            {% if d.note %} — {{ d.note }}{% endif %}
+          </span>
         </div>
         {% endfor %}
       </div>
