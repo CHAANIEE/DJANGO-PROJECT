@@ -10,7 +10,7 @@
 </head>
 <body class="auth-page">
 <div class="auth-wrap">
-  <div class="auth-card" style="max-width:520px">
+  <div class="auth-card" style="max-width:540px">
     <div class="auth-brand">
       <div class="auth-icon">💰</div>
       <h1 class="auth-title">Create Account</h1>
@@ -40,10 +40,16 @@
         {{ form.username }}
         {% if form.username.errors %}<div class="field-error">{{ form.username.errors.0 }}</div>{% endif %}
       </div>
-      <div class="field-group">
-        <label class="field-label">Monthly Salary (₱)</label>
-        {{ form.monthly_salary }}
-        {% if form.monthly_salary.errors %}<div class="field-error">{{ form.monthly_salary.errors.0 }}</div>{% endif %}
+      <div class="row-2">
+        <div class="field-group">
+          <label class="field-label">Monthly Salary (₱)</label>
+          {{ form.monthly_salary }}
+          {% if form.monthly_salary.errors %}<div class="field-error">{{ form.monthly_salary.errors.0 }}</div>{% endif %}
+        </div>
+        <div class="field-group">
+          <label class="field-label">Pay Schedule</label>
+          {{ form.salary_frequency }}
+        </div>
       </div>
       <div class="row-2">
         <div class="field-group">
