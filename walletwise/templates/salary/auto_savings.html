@@ -1,0 +1,93 @@
+{% extends 'salary/base.html' %}
+{% block title %}Auto Savings | WalletWise{% endblock %}
+{% block page_title %}Auto Savings Plans{% endblock %}
+{% block content %}
+<div class="pg">
+  <div class="pg-header">
+    <div>
+      <h2 class="pg-title">Auto Savings Plans</h2>
+      <p class="pg-sub">Money moves automatically into your savings goals on a schedule</p>
+    </div>
+    <a href="{% url 'savings' %}" class="btn btn-outline">View Goals →</a>
+  </div>
+
+  <!-- Create plan -->
+  <div class="card mb-3">
+    <div class="card-head"><div class="card-title">Create New Plan</div></div>
+    <div class="card-body">
+      <form method="post" action="{% url 'add_auto_savings' %}" class="inline-form">
+        {% csrf_token %}
+        <div class="field-group"><label class="field-label">Savings Goal</label>{{ form.goal }}</div>
+        <div class="field-group"><label class="field-label">Amount per cycle (₱)</label>{{ form.amount }}</div>
+        <div class="field-group"><label class="field-label">Frequency</label>{{ form.frequency }}</div>
+        <div class="field-group" style="padding-top:24px">
+          <button type="submit" class="btn btn-primary"><i class="bi bi-robot"></i> Create Plan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Plans grid -->
+  <div class="goals-grid">
+    {% for plan in plans %}
+    <div class="goal-card" style="--gcolor:{% if plan.is_active %}#38bdf8{% else %}#334155{% endif %}">
+      <div class="gc-header">
+        <div>
+          <div class="gc-name">{{ plan.goal.name }}</div>
+          <span class="gc-cat">{{ plan.get_frequency_display }}</span>
+        </div>
+        <div style="display:flex;gap:6px">
+          <a href="{% url 'toggle_auto_savings' plan.pk %}"
+             class="icon-btn {% if plan.is_active %}warn{% else %}ok{% endif %}"
+             title="{% if plan.is_active %}Pause{% else %}Activate{% endif %}">
+            <i class="bi {% if plan.is_active %}bi-pause-fill{% else %}bi-play-fill{% endif %}"></i>
+          </a>
+          <a href="{% url 'delete_auto_savings' plan.pk %}" class="icon-btn danger">
+            <i class="bi bi-trash"></i>
+          </a>
+        </div>
+      </div>
+      <div class="gc-amounts">
+        <div>
+          <div class="gc-amount-label">PER CYCLE</div>
+          <div class="gc-amount-val saved">₱{{ plan.amount|floatformat:2 }}</div>
+        </div>
+        <div>
+          <div class="gc-amount-label">PER MONTH</div>
+          <div class="gc-amount-val goal">₱{{ plan.monthly_cost|floatformat:2 }}</div>
+        </div>
+      </div>
+      <div class="gc-remaining" style="margin-bottom:8px">
+        {% if plan.is_active %}<span class="badge-active">Active</span>
+        {% else %}<span class="badge-paused">Paused</span>{% endif %}
+        {% if plan.last_run %}<span class="muted small"> · Last run: {{ plan.last_run }}</span>{% endif %}
+      </div>
+      <div class="progress-bar big">
+        <div class="progress-fill" style="width:{{ plan.goal.percent }}%;background:#38bdf8"></div>
+      </div>
+      <div class="goal-row-bot">
+        <span class="savings">₱{{ plan.goal.current|floatformat:2 }} saved</span>
+        <span class="muted">Goal: ₱{{ plan.goal.target|floatformat:2 }}</span>
+      </div>
+      {% if plan.goal.is_complete %}
+      <div class="goal-complete mt-2">🎉 Goal Reached!</div>
+      {% endif %}
+    </div>
+    {% empty %}
+    <div class="empty-full">
+      No auto-savings plans yet.<br>
+      <span class="muted">Create one above to start saving automatically.</span>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="info-box mt-3">
+    <i class="bi bi-info-circle-fill"></i>
+    <span>
+      <strong>Daily</strong> — a small amount is moved every day.<br>
+      <strong>Semi-monthly</strong> — deducted on the 1st &amp; 16th (synced to paycheck).<br>
+      <strong>Monthly</strong> — a lump-sum deduction on the 1st of each month.
+    </span>
+  </div>
+</div>
+{% endblock %}
