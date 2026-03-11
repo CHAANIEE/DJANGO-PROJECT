@@ -1,59 +1,159 @@
-// Sidebar mobile toggle
-const menuToggle = document.getElementById('menuToggle');
-const sidebar    = document.getElementById('sidebar');
-if (menuToggle && sidebar) {
-  menuToggle.addEventListener('click', () => sidebar.classList.toggle('open'));
-  document.addEventListener('click', e => {
-    if (!sidebar.contains(e.target) && !menuToggle.contains(e.target))
+/* ═══════════════════════════════════════════════════════════════
+   WalletWise — main.js
+   Sidebar, alerts, mobile interactions, micro-animations
+   ═══════════════════════════════════════════════════════════════ */
+
+   (function () {
+    'use strict';
+  
+    // ── Sidebar mobile toggle ──────────────────────────────────────
+    const menuToggle = document.getElementById('menuToggle');
+    const sidebar    = document.getElementById('sidebar');
+  
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'sidebar-overlay';
+    document.body.appendChild(overlay);
+  
+    function openSidebar() {
+      sidebar.classList.add('open');
+      overlay.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+  
+    function closeSidebar() {
       sidebar.classList.remove('open');
-  });
-}
-
-// Auto-dismiss alerts after 4s
-document.querySelectorAll('.alert.auto-dismiss').forEach(el => {
-  setTimeout(() => el.style.display = 'none', 4000);
-});
-document.querySelectorAll('.alert-close').forEach(btn => {
-  btn.addEventListener('click', () => btn.closest('.alert').style.display = 'none');
-});
-// static/js/main.js
-
-document.addEventListener('DOMContentLoaded', function() {
-  // Get current net balance from a data attribute in your template
-  // You need to add <div id="net-balance" data-value="{{ net_balance }}"></div> to your base.html or dashboard
-  const balanceEl = document.getElementById('net-balance');
-  if (!balanceEl) return;
-
-  const currentBalance = parseFloat(balanceEl.dataset.value);
-
-  // 1. Disable Savings Deposit if balance <= 0
-  const savingsForms = document.querySelectorAll('.savings-deposit-form');
-  savingsForms.forEach(form => {
-      const submitBtn = form.querySelector('button[type="submit"]');
-      if (currentBalance <= 0 && submitBtn) {
-          submitBtn.disabled = true;
-          submitBtn.title = "You need a positive net balance to save.";
-          submitBtn.style.opacity = "0.5";
-          submitBtn.style.cursor = "not-allowed";
+      overlay.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+  
+    if (menuToggle && sidebar) {
+      menuToggle.addEventListener('click', () => {
+        sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
+      });
+      overlay.addEventListener('click', closeSidebar);
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') closeSidebar();
+      });
+    }
+  
+    // ── Auto-dismiss alerts ────────────────────────────────────────
+    function dismissAlert(el) {
+      el.style.transition = 'opacity .3s ease, transform .3s ease, max-height .3s ease, margin .3s ease, padding .3s ease';
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(-6px)';
+      el.style.maxHeight = '0';
+      el.style.marginBottom = '0';
+      el.style.padding = '0';
+      setTimeout(() => el.remove(), 350);
+    }
+  
+    document.querySelectorAll('.alert.auto-dismiss').forEach(el => {
+      setTimeout(() => dismissAlert(el), 5000);
+    });
+  
+    document.querySelectorAll('.alert-close').forEach(btn => {
+      btn.addEventListener('click', () => dismissAlert(btn.closest('.alert')));
+    });
+  
+    // ── Animate numbers (stat cards) ──────────────────────────────
+    function animateNumber(el) {
+      const text = el.textContent.trim();
+      const match = text.match(/[₱]?([\d,]+\.?\d*)/);
+      if (!match) return;
+  
+      const raw   = parseFloat(match[1].replace(/,/g, ''));
+      if (isNaN(raw) || raw === 0) return;
+  
+      const prefix = text.includes('₱') ? '₱' : '';
+      const decimals = (match[1].split('.')[1] || '').length;
+      const duration = 900;
+      const start = performance.now();
+  
+      function tick(now) {
+        const t = Math.min((now - start) / duration, 1);
+        // easeOutCubic
+        const ease = 1 - Math.pow(1 - t, 3);
+        const val = raw * ease;
+        el.textContent = prefix + val.toLocaleString('en-PH', {
+          minimumFractionDigits: decimals,
+          maximumFractionDigits: decimals,
+        });
+        if (t < 1) requestAnimationFrame(tick);
       }
-  });
-
-  // 2. Validate Expense Amount on Input
-  const expenseInputs = document.querySelectorAll('input[name="amount"]');
-  expenseInputs.forEach(input => {
-      // Only check if the form is for an expense
-      const form = input.closest('form');
-      const typeInput = form.querySelector('input[name="type"]');
-      
-      if (typeInput && typeInput.value === 'expense') {
-          input.addEventListener('input', function() {
-              const amount = parseFloat(this.value);
-              if (amount > currentBalance) {
-                  this.setCustomValidity(`Amount exceeds your balance of ₱${currentBalance.toFixed(2)}`);
-              } else {
-                  this.setCustomValidity('');
-              }
-          });
+      requestAnimationFrame(tick);
+    }
+  
+    // Animate on page load with IntersectionObserver
+    const numEls = document.querySelectorAll('.sc-val, .bh-value, .ss-val, .sb-value');
+    if ('IntersectionObserver' in window) {
+      const obs = new IntersectionObserver(entries => {
+        entries.forEach(e => {
+          if (e.isIntersecting) { animateNumber(e.target); obs.unobserve(e.target); }
+        });
+      }, { threshold: 0.2 });
+      numEls.forEach(el => obs.observe(el));
+    }
+  
+    // ── Progress bar entrance animation ───────────────────────────
+    document.querySelectorAll('.progress-fill').forEach(bar => {
+      const target = bar.style.width;
+      bar.style.width = '0';
+      setTimeout(() => { bar.style.width = target }, 300);
+    });
+  
+    // ── Active nav link ripple effect ─────────────────────────────
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', function(e) {
+        const ripple = document.createElement('span');
+        ripple.style.cssText = `
+          position:absolute; border-radius:50%; pointer-events:none;
+          background:rgba(245,200,66,.15); transform:scale(0);
+          width:80px; height:80px;
+          left:${e.offsetX - 40}px; top:${e.offsetY - 40}px;
+          animation: ripple .5s ease-out forwards;
+        `;
+        this.style.position = 'relative';
+        this.style.overflow = 'hidden';
+        this.appendChild(ripple);
+        setTimeout(() => ripple.remove(), 500);
+      });
+    });
+  
+    // Add ripple keyframe
+    const styleTag = document.createElement('style');
+    styleTag.textContent = `
+      @keyframes ripple {
+        to { transform: scale(3); opacity: 0 }
       }
-  });
-});
+    `;
+    document.head.appendChild(styleTag);
+  
+    // ── Form input focus enhancement ──────────────────────────────
+    document.querySelectorAll('.form-control, .form-select').forEach(input => {
+      const group = input.closest('.field-group');
+      if (!group) return;
+      input.addEventListener('focus', () => group.classList.add('focused'));
+      input.addEventListener('blur',  () => group.classList.remove('focused'));
+    });
+  
+    // ── Button press feedback ──────────────────────────────────────
+    document.querySelectorAll('.btn').forEach(btn => {
+      btn.addEventListener('mousedown', () => btn.style.transform = 'scale(0.97)');
+      btn.addEventListener('mouseup',   () => btn.style.transform = '');
+      btn.addEventListener('mouseleave',() => btn.style.transform = '');
+    });
+  
+    // ── Table row click highlight ──────────────────────────────────
+    document.querySelectorAll('.tbl tbody tr').forEach(row => {
+      row.style.cursor = 'default';
+    });
+  
+    // ── Tooltip for truncated text ─────────────────────────────────
+    document.querySelectorAll('td, .gc-name, .budget-cat').forEach(el => {
+      if (el.scrollWidth > el.clientWidth) {
+        el.title = el.textContent.trim();
+      }
+    });
+  
+  })();
