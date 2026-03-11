@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.db import transaction as db_transaction
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -32,6 +33,18 @@ GOAL_COLORS = {
     'Emergency Fund':'#22c55e','Investment':'#3b82f6','Retirement':'#6366f1',
     'Travel':'#f59e0b','House':'#8b5cf6','Car':'#06b6d4','Education':'#ec4899','Other':'#94a3b8',
 }
+
+
+def _extract_error(exc):
+    """Extract a clean string from a Django ValidationError."""
+    if hasattr(exc, 'message_dict'):
+        msgs = []
+        for field, errs in exc.message_dict.items():
+            msgs.extend(errs)
+        return ' '.join(msgs)
+    if hasattr(exc, 'messages'):
+        return ' '.join(exc.messages)
+    return str(exc)
 
 
 def _get_or_create_profile(user):
@@ -84,7 +97,7 @@ def dashboard(request):
     profile = _get_or_create_profile(request.user)
     today   = date.today()
 
-    # Run auto-scheduler — fires salary, recurring expenses, savings on schedule
+    # Run auto-scheduler
     auto_log = run_auto_scheduler(request.user)
     for msg in auto_log:
         messages.info(request, msg)
@@ -98,7 +111,7 @@ def dashboard(request):
     net_balance   = total_income - total_expense
     total_saved   = SavingsGoal.objects.filter(user=request.user).aggregate(s=Sum('current'))['s'] or Decimal('0')
 
-    # ── Next salary countdown ──
+    # Next salary countdown
     release_days = [1] if profile.salary_frequency == 'monthly' else [1, 16]
     next_salary_day = None
     for d in release_days:
@@ -111,14 +124,14 @@ def dashboard(request):
         next_salary_day = date(y, m, release_days[0])
     days_until_salary = (next_salary_day - today).days
 
-    # ── Monthly plan totals ──
+    # Monthly plan totals
     rec_expenses       = RecurringExpense.objects.filter(user=request.user, is_active=True)
     auto_savings       = AutoSavingsPlan.objects.filter(user=request.user, is_active=True)
     total_rec_monthly  = sum(e.monthly_cost for e in rec_expenses)
     total_auto_savings = sum(p.monthly_cost for p in auto_savings)
     disposable         = profile.monthly_salary - total_rec_monthly - total_auto_savings
 
-    # ── 6-month trend ──
+    # 6-month trend
     trend = []
     for i in range(5, -1, -1):
         ref = date(today.year, today.month, 1) - timedelta(days=i * 30)
@@ -128,14 +141,14 @@ def dashboard(request):
         exp  = txns.filter(type='expense').aggregate(s=Sum('amount'))['s'] or Decimal('0')
         trend.append({'month': ref.strftime('%b %Y'), 'income': float(inc), 'expense': float(exp)})
 
-    # ── Expense donut ──
+    # Expense donut
     exp_cats = []
     for cat in EXPENSE_CATEGORIES + ['Savings Deposit']:
         val = month_txns.filter(type='expense', category=cat).aggregate(s=Sum('amount'))['s'] or Decimal('0')
         if val > 0:
             exp_cats.append({'name': cat, 'value': float(val), 'color': CAT_COLORS.get(cat, '#64748b')})
 
-    # ── Budget progress ──
+    # Budget progress
     budgets = Budget.objects.filter(user=request.user)
     budget_data = []
     for b in budgets:
@@ -148,7 +161,7 @@ def dashboard(request):
             'color': CAT_COLORS.get(b.category, '#64748b'),
         })
 
-    # ── Goals ──
+    # Goals
     goals = SavingsGoal.objects.filter(user=request.user)
     goal_data = [{
         'id': g.id, 'name': g.name, 'category': g.category,
@@ -223,11 +236,7 @@ def add_transaction(request):
                 messages.success(request, f'{txn.get_type_display()} of ₱{txn.amount:,.2f} added.')
                 return redirect('transactions')
             except ValidationError as e:
-                messages.error(request, str(e.message if hasattr(e, 'message') else e))
-                return render(request, 'salary/transaction_form.html', {
-                    'form': form, 'txn_type': txn_type,
-                    'income_cats': INCOME_CATEGORIES, 'expense_cats': EXPENSE_CATEGORIES,
-                })
+                messages.error(request, _extract_error(e))
     else:
         form = TransactionForm(txn_type=txn_type, initial={'type': txn_type, 'date': date.today()})
     return render(request, 'salary/transaction_form.html', {
@@ -247,7 +256,7 @@ def edit_transaction(request, pk):
                 messages.success(request, 'Transaction updated.')
                 return redirect('transactions')
             except ValidationError as e:
-                messages.error(request, str(e.message if hasattr(e, 'message') else e))
+                messages.error(request, _extract_error(e))
     else:
         form = TransactionForm(instance=txn, txn_type=txn.type)
     return render(request, 'salary/transaction_form.html', {
@@ -282,7 +291,6 @@ def savings(request):
     total_goal  = goals.aggregate(s=Sum('target'))['s']  or Decimal('0')
     return render(request, 'salary/savings.html', {
         'goal_data': goal_data, 'total_saved': total_saved, 'total_goal': total_goal,
-        'deposit_form': SavingsDepositForm(initial={'date': date.today()}),
     })
 
 
@@ -332,19 +340,21 @@ def deposit_savings(request, pk):
         form = SavingsDepositForm(request.POST)
         if form.is_valid():
             try:
-                deposit = form.save(commit=False)
-                deposit.goal = goal
-                deposit.save()   # model.save() handles goal update + validation
-                # Log as a transaction
-                Transaction.objects.create(
-                    user=request.user, type='expense', category='Savings Deposit',
-                    amount=deposit.amount,
-                    description=f'Manual deposit → {goal.name}',
-                    date=deposit.date,
-                )
+                with db_transaction.atomic():
+                    deposit = form.save(commit=False)
+                    deposit.goal = goal
+                    deposit.save()  # validates + updates goal.current
+                    # Log as expense transaction (skip balance re-check, already validated above)
+                    t = Transaction(
+                        user=request.user, type='expense', category='Savings Deposit',
+                        amount=deposit.amount,
+                        description=f'Manual deposit → {goal.name}',
+                        date=deposit.date,
+                    )
+                    t.save(skip_validation=True)
                 messages.success(request, f'₱{deposit.amount:,.2f} deposited to "{goal.name}".')
             except ValidationError as e:
-                messages.error(request, str(e.message if hasattr(e, 'message') else e))
+                messages.error(request, _extract_error(e))
     return redirect('savings')
 
 
@@ -540,28 +550,22 @@ def analytics(request):
         if val > 0:
             expense_cats.append({'name': cat, 'value': float(val), 'color': CAT_COLORS.get(cat, '#64748b')})
 
-    all_txns          = Transaction.objects.filter(user=request.user)
-    total_income_all  = all_txns.filter(type='income').aggregate(s=Sum('amount'))['s']  or Decimal('0')
-    total_expense_all = all_txns.filter(type='expense').aggregate(s=Sum('amount'))['s'] or Decimal('0')
-    income_months     = [t['income']  for t in trend]
-    expense_months    = [t['expense'] for t in trend]
-    avg_income        = sum(income_months)  / 6
-    avg_expense       = sum(expense_months) / 6
-    goals             = SavingsGoal.objects.filter(user=request.user)
-    total_saved       = goals.aggregate(s=Sum('current'))['s'] or Decimal('0')
+    all_txns    = Transaction.objects.filter(user=request.user)
+    goals       = SavingsGoal.objects.filter(user=request.user)
+    total_saved = goals.aggregate(s=Sum('current'))['s'] or Decimal('0')
+    income_months  = [t['income']  for t in trend]
+    expense_months = [t['expense'] for t in trend]
+    avg_income  = sum(income_months)  / 6
+    avg_expense = sum(expense_months) / 6
 
     return render(request, 'salary/analytics.html', {
-        'trend_json':          json.dumps(trend),
-        'income_cats_json':    json.dumps(income_cats),
-        'expense_cats_json':   json.dumps(expense_cats),
-        'total_income_all':    total_income_all,
-        'total_expense_all':   total_expense_all,
-        'avg_income':          avg_income,
-        'avg_expense':         avg_expense,
-        'total_saved':         total_saved,
-        'total_txns':          all_txns.count(),
-        'total_goals':         goals.count(),
-        'budget_count':        Budget.objects.filter(user=request.user).count(),
+        'trend_json':        json.dumps(trend),
+        'income_cats_json':  json.dumps(income_cats),
+        'expense_cats_json': json.dumps(expense_cats),
+        'avg_income':        avg_income,
+        'avg_expense':       avg_expense,
+        'total_saved':       total_saved,
+        'total_txns':        all_txns.count(),
     })
 
 
