@@ -19,6 +19,9 @@
       "cpath",
       "txns",
       "stylesheet",
-      "autofocus"
+      "onchange",
+      "forloop",
+      "autofocus",
+      "Crect"
     ]
   }
