@@ -1,23 +1,26 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
-from .models import UserProfile, Transaction, SavingsGoal, SavingsDeposit, Budget
-from .models import SavingsDeposit, SavingsGoal # Ensure this is correct
+from .models import (UserProfile, Transaction, SavingsGoal, SavingsDeposit,
+                     Budget, RecurringExpense, AutoSavingsPlan)
 
-
-INCOME_CATEGORIES = ['Salary','Freelance','Bonus','Investment','Side Hustle','Gift','Other Income']
+INCOME_CATEGORIES  = ['Salary','Freelance','Bonus','Investment','Side Hustle','Gift','Other Income']
 EXPENSE_CATEGORIES = ['Food','Rent','Transport','Utilities','Health','Entertainment','Shopping','Education','Other']
-SAVING_CATEGORIES  = ['Emergency Fund','Investment','Retirement','Travel','House','Car','Education','Other']
 
 W = {'class': 'form-control'}
 S = {'class': 'form-select'}
 
 
 class RegisterForm(UserCreationForm):
-    first_name     = forms.CharField(max_length=50,  widget=forms.TextInput(attrs={**W, 'placeholder': 'First Name'}))
-    last_name      = forms.CharField(max_length=50,  widget=forms.TextInput(attrs={**W, 'placeholder': 'Last Name'}))
-    email          = forms.EmailField(widget=forms.EmailInput(attrs={**W, 'placeholder': 'Email'}))
-    monthly_salary = forms.DecimalField(min_value=0, widget=forms.NumberInput(attrs={**W, 'placeholder': '0.00', 'step': '0.01'}))
+    first_name       = forms.CharField(max_length=50, widget=forms.TextInput(attrs={**W, 'placeholder': 'First Name'}))
+    last_name        = forms.CharField(max_length=50, widget=forms.TextInput(attrs={**W, 'placeholder': 'Last Name'}))
+    email            = forms.EmailField(widget=forms.EmailInput(attrs={**W, 'placeholder': 'Email'}))
+    monthly_salary   = forms.DecimalField(min_value=0, widget=forms.NumberInput(attrs={**W, 'placeholder': '0.00', 'step': '0.01'}))
+    salary_frequency = forms.ChoiceField(
+        choices=UserProfile.SALARY_FREQ,
+        widget=forms.Select(attrs=S),
+        initial='monthly',
+    )
 
     class Meta:
         model  = User
@@ -36,8 +39,11 @@ class ProfileForm(forms.ModelForm):
 
     class Meta:
         model   = UserProfile
-        fields  = ['monthly_salary']
-        widgets = {'monthly_salary': forms.NumberInput(attrs={**W, 'step': '0.01', 'min': '0'})}
+        fields  = ['monthly_salary', 'salary_frequency']
+        widgets = {
+            'monthly_salary':   forms.NumberInput(attrs={**W, 'step': '0.01', 'min': '0'}),
+            'salary_frequency': forms.Select(attrs=S),
+        }
 
 
 class TransactionForm(forms.ModelForm):
@@ -72,7 +78,7 @@ class SavingsGoalForm(forms.ModelForm):
         model   = SavingsGoal
         fields  = ['name', 'category', 'target', 'current']
         widgets = {
-            'name':     forms.TextInput(attrs={**W, 'placeholder': 'e.g. Emergency Fund, Dream Vacation…'}),
+            'name':     forms.TextInput(attrs={**W, 'placeholder': 'e.g. Emergency Fund…'}),
             'category': forms.Select(attrs=S),
             'target':   forms.NumberInput(attrs={**W, 'step': '0.01', 'min': '1', 'placeholder': '0.00'}),
             'current':  forms.NumberInput(attrs={**W, 'step': '0.01', 'min': '0', 'placeholder': '0.00'}),
@@ -98,3 +104,32 @@ class BudgetForm(forms.ModelForm):
             'category': forms.Select(attrs=S, choices=[('', '— Select —')] + [(c, c) for c in EXPENSE_CATEGORIES]),
             'limit':    forms.NumberInput(attrs={**W, 'step': '0.01', 'min': '1', 'placeholder': '0.00'}),
         }
+
+
+class RecurringExpenseForm(forms.ModelForm):
+    class Meta:
+        model   = RecurringExpense
+        fields  = ['name', 'category', 'amount', 'frequency', 'is_active']
+        widgets = {
+            'name':      forms.TextInput(attrs={**W, 'placeholder': 'e.g. Rent, Netflix…'}),
+            'category':  forms.Select(attrs=S, choices=[('', '— Select —')] + [(c, c) for c in EXPENSE_CATEGORIES]),
+            'amount':    forms.NumberInput(attrs={**W, 'step': '0.01', 'min': '0.01', 'placeholder': '0.00'}),
+            'frequency': forms.Select(attrs=S),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+
+class AutoSavingsPlanForm(forms.ModelForm):
+    class Meta:
+        model   = AutoSavingsPlan
+        fields  = ['goal', 'amount', 'frequency', 'is_active']
+        widgets = {
+            'goal':      forms.Select(attrs=S),
+            'amount':    forms.NumberInput(attrs={**W, 'step': '0.01', 'min': '0.01', 'placeholder': '0.00'}),
+            'frequency': forms.Select(attrs=S),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+    def __init__(self, user, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['goal'].queryset = SavingsGoal.objects.filter(user=user)
